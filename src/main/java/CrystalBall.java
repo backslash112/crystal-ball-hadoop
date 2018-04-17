@@ -1,5 +1,6 @@
 import java.io.IOException;
 
+import com.sun.corba.se.spi.ior.Writeable;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -15,43 +16,59 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class CrystalBall {
 
-    public static class Map extends Mapper<LongWritable, Text, StringPair, IntWritable> {
+    public static class Map extends Mapper<LongWritable, Text, Text, MyMapWritable> {
         public static final Log log = LogFactory.getLog(Map.class);
         private final static IntWritable one = new IntWritable(1);
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            log.info("line: " + line);
+            log.info(line);
             String[] result = line.split("\\s+");
-            log.info("result: " + result);
-            for (String item: result) {
-                log.info(item);
-            }
-            log.info("result.length: " + result.length);
             for (int i = 0; i < result.length; i++) {
-                log.info("i = " + i);
+                String stripesKey = result[i];
+                MyMapWritable H = new MyMapWritable();
                 for (int j = i+1; j < result.length; j++) {
-                    log.info("j = " + j);
-                    if (result[j].equals(result[i])) {
-                        log.info("break");
+                    String neighbor = result[j];
+                    if (result[j].equals(stripesKey)) {
                         break;
                     }
-                    log.info(new StringPair(result[i], result[j]) + ", 1");
-                    context.write(new StringPair(result[i], result[j]), one);
+                    Text currentNeighbor = new Text(neighbor);
+                    if (H.containsKey(currentNeighbor)) {
+                        IntWritable originValue = (IntWritable)H.get(currentNeighbor);
+                        H.put(new Text(neighbor), new IntWritable(originValue.get() + 1));
+                    } else {
+                        H.put(new Text(neighbor), one);
+                    }
+                }
+
+                if (!H.isEmpty()) {
+                    context.write(new Text(stripesKey), H);
                 }
             }
         }
-
     }
-    public static class Reduce extends Reducer<StringPair, IntWritable, StringPair, IntWritable> {
+    public static class Reduce extends Reducer<Text, MyMapWritable, Text, Writable> {
 
-        public void reduce(StringPair key, Iterable<IntWritable> values, Context context)
+        public void reduce(Text key, Iterable<MyMapWritable> values, Context context)
                 throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable val : values) {
-                sum += val.get();
+            MyMapWritable H = new MyMapWritable();
+            for (MyMapWritable val : values) {
+                for (java.util.Map.Entry<Writable, Writable> item: val.entrySet()) {
+                    Writable itemKey = item.getKey();
+                    if (H.containsKey(itemKey)) {
+                        Writable itemValue = item.getValue();
+                        Writable originValue = H.get(itemKey);
+                        int newValue = ((IntWritable)itemValue).get() + ((IntWritable)originValue).get();
+                        H.put(itemKey, new IntWritable(newValue));
+                    } else {
+                        H.put(itemKey, item.getValue());
+                    }
+                }
             }
-            context.write(key, new IntWritable(sum));
+//            context.write(key, H);
+            for (java.util.Map.Entry<Writable, Writable> item: H.entrySet()) {
+                context.write(new Text(String.format("(" + key + ", " + item.getKey() + ")")), item.getValue());
+            }
         }
     }
 
@@ -60,8 +77,11 @@ public class CrystalBall {
         Configuration conf = new Configuration();
         Job job = new Job(conf, "crystal-ball-hadoop");
         job.setJarByClass(CrystalBall.class);
-        job.setOutputKeyClass(StringPair.class);
-        job.setOutputValueClass(IntWritable.class);
+
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(MyMapWritable.class);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Writable.class);
 
         job.setMapperClass(Map.class);
         job.setReducerClass(Reduce.class);
