@@ -21,16 +21,22 @@ public class CrystalBall {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            String[] result = line.split("\\s+w");
-            log.info(result);
+            log.info("line: " + line);
+            String[] result = line.split("\\s+");
+            log.info("result: " + result);
             for (String item: result) {
                 log.info(item);
             }
+            log.info("result.length: " + result.length);
             for (int i = 0; i < result.length; i++) {
+                log.info("i = " + i);
                 for (int j = i+1; j < result.length; j++) {
-                    if (result[j] == result[i]) {
-                       break;
+                    log.info("j = " + j);
+                    if (result[j].equals(result[i])) {
+                        log.info("break");
+                        break;
                     }
+                    log.info(new StringPair(result[i], result[j]) + ", 1");
                     context.write(new StringPair(result[i], result[j]), one);
                 }
             }

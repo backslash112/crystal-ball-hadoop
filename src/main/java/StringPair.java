@@ -38,7 +38,11 @@ public class StringPair implements WritableComparable<StringPair> {
     }
 
     public int compareTo(StringPair o) {
-        return this.first.compareTo(o.getFirst());
+        int cmp = this.first.compareTo(o.getFirst());
+        if (cmp == 0) {
+            return this.second.compareTo(o.getSecond());
+        }
+        return cmp;
     }
 
     @Override
