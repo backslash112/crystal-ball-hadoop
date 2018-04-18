@@ -20,6 +20,13 @@ public class CrystalBall {
         public static final Log log = LogFactory.getLog(Map.class);
         private final static IntWritable one = new IntWritable(1);
 
+        private MyMapWritable G = null;
+        @Override
+        protected void setup(Context context) throws IOException, InterruptedException {
+            super.setup(context);
+            this.G = new MyMapWritable();
+        }
+
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
             log.info(line);
@@ -41,9 +48,19 @@ public class CrystalBall {
                     }
                 }
 
-                if (!H.isEmpty()) {
-                    context.write(new Text(stripesKey), H);
+                if (this.G.containsKey(new Text(stripesKey))) {
+                    MyMapWritable originH = (MyMapWritable)this.G.get(new Text(stripesKey));
+                    H.addAll(originH);
                 }
+                this.G.put(new Text(stripesKey), H);
+            }
+        }
+
+        @Override
+        protected void cleanup(Context context) throws IOException, InterruptedException {
+            super.cleanup(context);
+            for (java.util.Map.Entry<Writable, Writable> item: this.G.entrySet()) {
+                context.write((Text)item.getKey(), (MyMapWritable)item.getValue());
             }
         }
     }

@@ -25,4 +25,16 @@ public class MyMapWritable extends MapWritable {
     public boolean containsKey(Object key) {
         return super.containsKey(key);
     }
+
+    public void addAll(MyMapWritable map) {
+        for (Map.Entry item: map.entrySet()) {
+            if (this.containsKey(item.getKey())) {
+                IntWritable originValue = (IntWritable)this.get(item.getKey());
+                int newValue = originValue.get() + ((IntWritable)item.getValue()).get();
+                this.put((Text)item.getKey(), new IntWritable(newValue));
+            } else {
+                this.put((Text)item.getKey(), (IntWritable)item.getValue());
+            }
+        }
+    }
 }
