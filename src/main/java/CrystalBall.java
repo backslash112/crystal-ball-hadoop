@@ -17,10 +17,10 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class CrystalBall {
 
     public static class Map extends Mapper<LongWritable, Text, StringPair, IntWritable> {
-        public static final Log log = LogFactory.getLog(Map.class);
-//        private final static IntWritable one = new IntWritable(1);
+        // public static final Log log = LogFactory.getLog(Map.class);
 
         private java.util.Map<StringPair, Integer> H = null;
+
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             super.setup(context);
@@ -29,26 +29,13 @@ public class CrystalBall {
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            log.info("line: " + line);
             String[] result = line.split("\\s+");
-            log.info("result: " + result);
-            for (String item: result) {
-                log.info(item);
-            }
-            log.info("result.length: " + result.length);
             for (int i = 0; i < result.length; i++) {
-                log.info("i = " + i);
-
                 for (int j = i+1; j < result.length; j++) {
-                    log.info("j = " + j);
                     if (result[j].equals(result[i])) {
-                        log.info("break");
                         break;
                     }
-
                     StringPair pair = new StringPair(result[i], result[j]);
-//                    log.info(pair + ", 1");
-//                    context.write(new StringPair(result[i], result[j]), one);
                     int count = 1;
                     if (this.H.containsKey(pair)) {
                         count += this.H.get(pair);
@@ -66,15 +53,42 @@ public class CrystalBall {
             }
         }
     }
-    public static class Reduce extends Reducer<StringPair, IntWritable, StringPair, IntWritable> {
+    public static class Reduce extends Reducer<StringPair, IntWritable, Text, MyMapWritable> {
 
-        public void reduce(StringPair key, Iterable<IntWritable> values, Context context)
-                throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable val : values) {
-                sum += val.get();
+        private MyMapWritable G = null;
+
+        @Override
+        protected void setup(Context context) throws IOException, InterruptedException {
+            super.setup(context);
+            this.G = new MyMapWritable();
+        }
+
+        @Override
+        protected void cleanup(Context context) throws IOException, InterruptedException {
+            super.cleanup(context);
+            for (java.util.Map.Entry<Writable, Writable> item: this.G.entrySet()) {
+                context.write((Text)item.getKey(), (MyMapWritable)item.getValue());
             }
-            context.write(key, new IntWritable(sum));
+        }
+
+        public void reduce(StringPair pair, Iterable<IntWritable> values, Context context)
+                throws IOException, InterruptedException {
+            MyMapWritable newH = new MyMapWritable();
+            for (IntWritable val : values) {
+                int count = val.get();
+                Text neighbor = new Text(pair.getSecond());
+                if (newH.containsKey(neighbor)) {
+                    count += ((IntWritable)newH.get(neighbor)).get();
+                }
+                newH.put(neighbor, new IntWritable(count));
+            }
+
+            Text key = new Text(pair.getFirst());
+            if (this.G.containsKey(key)) {
+                MyMapWritable originH = (MyMapWritable)this.G.get(key);
+                newH.addAll(originH);
+            }
+            this.G.put(key, newH);
         }
     }
 
@@ -83,6 +97,7 @@ public class CrystalBall {
         Configuration conf = new Configuration();
         Job job = new Job(conf, "crystal-ball-hadoop");
         job.setJarByClass(CrystalBall.class);
+
         job.setOutputKeyClass(StringPair.class);
         job.setOutputValueClass(IntWritable.class);
 
