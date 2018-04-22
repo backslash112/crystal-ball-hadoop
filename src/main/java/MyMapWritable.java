@@ -18,6 +18,7 @@ public class MyMapWritable extends MapWritable {
             sb.append(value.toString());
             sb.append("), ");
         }
+        sb.deleteCharAt(sb.length()-2);
         return sb.toString();
     }
 
