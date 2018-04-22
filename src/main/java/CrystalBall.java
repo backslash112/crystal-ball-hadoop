@@ -17,32 +17,31 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class CrystalBall {
 
     public static class Map extends Mapper<LongWritable, Text, Text, MyMapWritable> {
-        public static final Log log = LogFactory.getLog(Map.class);
+
         private final static IntWritable one = new IntWritable(1);
 
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        public void map(LongWritable mk, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
-            log.info(line);
             String[] result = line.split("\\s+");
+
             for (int i = 0; i < result.length; i++) {
-                String stripesKey = result[i];
+                String key = result[i];
                 MyMapWritable H = new MyMapWritable();
                 for (int j = i+1; j < result.length; j++) {
-                    String neighbor = result[j];
-                    if (result[j].equals(stripesKey)) {
+                    String neighborStr = result[j];
+                    if (result[j].equals(key)) {
                         break;
                     }
-                    Text currentNeighbor = new Text(neighbor);
-                    if (H.containsKey(currentNeighbor)) {
-                        IntWritable originValue = (IntWritable)H.get(currentNeighbor);
-                        H.put(new Text(neighbor), new IntWritable(originValue.get() + 1));
+                    Text neighbor = new Text(neighborStr);
+                    if (H.containsKey(neighbor)) {
+                        H.put(neighbor, new IntWritable(((IntWritable)H.get(neighbor)).get() + 1));
                     } else {
-                        H.put(new Text(neighbor), one);
+                        H.put(neighbor, one);
                     }
                 }
 
                 if (!H.isEmpty()) {
-                    context.write(new Text(stripesKey), H);
+                    context.write(new Text(key), H);
                 }
             }
         }
@@ -65,10 +64,7 @@ public class CrystalBall {
                     }
                 }
             }
-//            context.write(key, H);
-            for (java.util.Map.Entry<Writable, Writable> item: H.entrySet()) {
-                context.write(new Text(String.format("(" + key + ", " + item.getKey() + ")")), item.getValue());
-            }
+            context.write(key, H);
         }
     }
 
