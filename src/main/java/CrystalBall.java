@@ -28,10 +28,10 @@ public class CrystalBall {
                 String key = result[i];
                 MyMapWritable H = new MyMapWritable();
                 for (int j = i+1; j < result.length; j++) {
-                    String neighborStr = result[j];
                     if (result[j].equals(key)) {
                         break;
                     }
+                    String neighborStr = result[j];
                     Text neighbor = new Text(neighborStr);
                     if (H.containsKey(neighbor)) {
                         H.put(neighbor, new IntWritable(((IntWritable)H.get(neighbor)).get() + 1));
