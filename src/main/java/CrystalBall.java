@@ -1,9 +1,6 @@
 import java.io.IOException;
 import java.util.HashMap;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
 import org.apache.hadoop.io.*;
@@ -17,17 +14,16 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class CrystalBall {
 
     public static class Map extends Mapper<LongWritable, Text, StringPair, IntWritable> {
-        // public static final Log log = LogFactory.getLog(Map.class);
 
-        private java.util.Map<StringPair, Integer> H = null;
+        private java.util.Map<StringPair, Integer> map = null;
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             super.setup(context);
-            this.H = new HashMap<StringPair, Integer>();
+            this.map = new HashMap<StringPair, Integer>();
         }
 
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+        public void map(LongWritable key, Text value, Context context) {
             String line = value.toString();
             String[] result = line.split("\\s+");
             for (int i = 0; i < result.length; i++) {
@@ -37,10 +33,10 @@ public class CrystalBall {
                     }
                     StringPair pair = new StringPair(result[i], result[j]);
                     int count = 1;
-                    if (this.H.containsKey(pair)) {
-                        count += this.H.get(pair);
+                    if (this.map.containsKey(pair)) {
+                        count += this.map.get(pair);
                     }
-                    this.H.put(pair, count);
+                    this.map.put(pair, count);
                 }
             }
         }
@@ -48,7 +44,7 @@ public class CrystalBall {
         @Override
         protected void cleanup(Context context) throws IOException, InterruptedException {
             super.cleanup(context);
-            for (java.util.Map.Entry<StringPair, Integer> item: this.H.entrySet()) {
+            for (java.util.Map.Entry<StringPair, Integer> item: this.map.entrySet()) {
                 context.write(item.getKey(), new IntWritable(item.getValue()));
             }
         }
@@ -71,8 +67,7 @@ public class CrystalBall {
             }
         }
 
-        public void reduce(StringPair pair, Iterable<IntWritable> values, Context context)
-                throws IOException, InterruptedException {
+        public void reduce(StringPair pair, Iterable<IntWritable> values, Context context) {
             MyMapWritable newH = new MyMapWritable();
             for (IntWritable val : values) {
                 int count = val.get();
