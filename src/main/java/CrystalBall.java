@@ -53,14 +53,14 @@ public class CrystalBall {
             MyMapWritable H = new MyMapWritable();
             for (MyMapWritable val : values) {
                 for (java.util.Map.Entry<Writable, Writable> item: val.entrySet()) {
-                    Writable itemKey = item.getKey();
-                    if (H.containsKey(itemKey)) {
-                        Writable itemValue = item.getValue();
-                        Writable originValue = H.get(itemKey);
-                        int newValue = ((IntWritable)itemValue).get() + ((IntWritable)originValue).get();
-                        H.put(itemKey, new IntWritable(newValue));
+                    Writable neighbor = item.getKey();
+                    Writable neighborCount = item.getValue();
+
+                    if (H.containsKey(neighbor)) {
+                        int newNeighborCount = ((IntWritable)neighborCount).get() + ((IntWritable)H.get(neighbor)).get();
+                        H.put(neighbor, new IntWritable(newNeighborCount));
                     } else {
-                        H.put(itemKey, item.getValue());
+                        H.put(neighbor, neighborCount);
                     }
                 }
             }
