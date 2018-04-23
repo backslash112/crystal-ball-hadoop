@@ -15,9 +15,9 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class CrystalBall {
 
-    public static class Map extends Mapper<LongWritable, Text, StringPair, IntWritable> {
+    public static class Map extends Mapper<LongWritable, Text, StringPair, FloatWritable> {
         public static final Log log = LogFactory.getLog(Map.class);
-        private final static IntWritable one = new IntWritable(1);
+        private final static FloatWritable one = new FloatWritable(1);
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
             String line = value.toString();
@@ -37,21 +37,37 @@ public class CrystalBall {
                         break;
                     }
                     log.info(new StringPair(result[i], result[j]) + ", 1");
+                    context.write(new StringPair(result[i], "*"), one);
                     context.write(new StringPair(result[i], result[j]), one);
                 }
             }
         }
 
     }
-    public static class Reduce extends Reducer<StringPair, IntWritable, StringPair, IntWritable> {
+    public static class Reduce extends Reducer<StringPair, FloatWritable, StringPair, FloatWritable> {
+        public static final Log log = LogFactory.getLog(Map.class);
+        private float total = 0;
+        @Override
+        protected void setup(Context context) throws IOException, InterruptedException {
+            super.setup(context);
+            this.total = 0;
+        }
 
-        public void reduce(StringPair key, Iterable<IntWritable> values, Context context)
+        public void reduce(StringPair key, Iterable<FloatWritable> values, Context context)
                 throws IOException, InterruptedException {
-            int sum = 0;
-            for (IntWritable val : values) {
+            float sum = 0;
+            for (FloatWritable val : values) {
                 sum += val.get();
             }
-            context.write(key, new IntWritable(sum));
+            if (key.getSecond().equals("*")) {
+                total = sum;
+            } else {
+                log.info("sum=" + sum);
+                log.info("total=" + total);
+                log.info("sum/total = " + sum/total);
+                context.write(key, new FloatWritable(sum/total));
+            }
+
         }
     }
 
@@ -60,8 +76,12 @@ public class CrystalBall {
         Configuration conf = new Configuration();
         Job job = new Job(conf, "crystal-ball-hadoop");
         job.setJarByClass(CrystalBall.class);
+
+        job.setMapOutputKeyClass(StringPair.class);
+        job.setMapOutputValueClass(FloatWritable.class);
         job.setOutputKeyClass(StringPair.class);
-        job.setOutputValueClass(IntWritable.class);
+        job.setOutputValueClass(FloatWritable.class);
+
 
         job.setMapperClass(Map.class);
         job.setReducerClass(Reduce.class);
