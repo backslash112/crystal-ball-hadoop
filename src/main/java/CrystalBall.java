@@ -49,7 +49,7 @@ public class CrystalBall {
             }
         }
     }
-    public static class Reduce extends Reducer<StringPair, IntWritable, Text, MyMapWritable> {
+    public static class Reduce extends Reducer<StringPair, IntWritable, StringPair, FloatWritable> {
 
         private MyMapWritable G = null;
 
@@ -63,8 +63,18 @@ public class CrystalBall {
         protected void cleanup(Context context) throws IOException, InterruptedException {
             super.cleanup(context);
             for (java.util.Map.Entry<Writable, Writable> item: this.G.entrySet()) {
-                context.write((Text)item.getKey(), (MyMapWritable)item.getValue());
+                Text key  = (Text)item.getKey();
+                MyMapWritable H = (MyMapWritable)item.getValue();
+                int total = H.getTotal();
+
+                for (java.util.Map.Entry<Writable, Writable> item1: H.entrySet()) {
+                    Writable neighbor = item1.getKey();
+                    Writable neighborCount = item1.getValue();
+                    float count = ((IntWritable)neighborCount).get();
+                    context.write(new StringPair(key.toString(), neighbor.toString()), new FloatWritable(count / total));
+                }
             }
+
         }
 
         public void reduce(StringPair pair, Iterable<IntWritable> values, Context context) {
@@ -94,7 +104,9 @@ public class CrystalBall {
         job.setJarByClass(CrystalBall.class);
 
         job.setOutputKeyClass(StringPair.class);
-        job.setOutputValueClass(IntWritable.class);
+        job.setOutputValueClass(FloatWritable.class);
+
+
 
         job.setMapperClass(Map.class);
         job.setReducerClass(Reduce.class);
