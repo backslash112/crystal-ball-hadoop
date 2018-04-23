@@ -26,4 +26,13 @@ public class MyMapWritable extends MapWritable {
     public boolean containsKey(Object key) {
         return super.containsKey(key);
     }
+
+    public int getTotal() {
+        int total = 0;
+        for (Map.Entry<Writable, Writable> item : this.entrySet()) {
+            int value = ((IntWritable) item.getValue()).get();
+            total += value;
+        }
+        return total;
+    }
 }
